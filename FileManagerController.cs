@@ -156,8 +156,8 @@ namespace GURU.api
                     //    Console.WriteLine("Inner Exception: " + Environment.NewLine + ex.InnerException);
                     //}
 
-                    NetworkCredential theNetworkCredential = new NetworkCredential("JMondal-", "Meghna_55", "MI\\");
-                    //NetworkCredential theNetworkCredential = new NetworkCredential("GuruFileManager", "$)V2CxKrxLjCasdf", "MI");
+                    NetworkCredential theNetworkCredential = new NetworkCredential("JMondal-", "!!!!!", "MI\\");
+                    //NetworkCredential theNetworkCredential = new NetworkCredential("GuruFileManager", "!!!!!", "MI");
                     CredentialCache theNetCache = new CredentialCache();
                     theNetCache.Add(new Uri(@"\\utilitybox"), "Basic", theNetworkCredential);
                     string userID = WindowsIdentity.GetCurrent().Name;
