@@ -1,0 +1,169 @@
+﻿<link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../bower_components/polymer/lib/elements/dom-repeat.html">
+<link rel="import" href="../../bower_components/iron-flex-layout/iron-flex-layout-classes.html">
+<link rel="import" href="../../bower_components/paper-tooltip/paper-tooltip.html">
+<link rel="import" href="../../bower_components/paper-dropdown-input/paper-dropdown-input.html">
+<link rel="import" href="../../bower_components/paper-dropdown-menu/paper-dropdown-menu.html">
+<link rel="import" href="../../bower_components/paper-item/paper-item.html">
+<link rel="import" href="../../bower_components/paper-card/paper-card.html">
+<link rel="import" href="../../bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../../bower_components/paper-toast/paper-toast.html">
+
+<dom-module id="file-manager">
+    <template>
+        <style include="iron-flex iron-positioning iron-flex-alignment">
+            :host {
+                --primary-color: #1C95AF;
+            }
+
+            paper-header-panel {
+                background-color: rgb(250, 250, 250);
+            }
+
+            .toolbar-container {
+                width: 100%;
+                height: 100%;
+            }
+
+            paper-toolbar {
+                background-color: white;
+                --paper-toolbar-height: 80px;
+                --paper-toolbar-sm-height: 80px;
+            }
+
+            #filemanagerheaderimage {
+                height: 100%;
+                width: 100%;
+            }
+
+            .filemanagerlogoimage {
+                position: relative;
+                width: 120px;
+                max-height: 50px;
+                z-index: 1;
+            }
+
+            #submit-box {
+                margin: 5px;
+                overflow-x: hidden;
+                overflow-y: auto;
+                padding: 8px;
+                min-height : 25%;
+                height: 25%;
+            }
+
+            #output-paper-item{
+                width: 100%;
+                overflow-x:auto;
+            }
+
+            .action-buttons {
+                color: white;
+                background-color: var(--primary-color);
+            }
+            #file-container{
+                background-color: #F5F5F5;
+                border-radius: 8px;
+                padding: 2px;
+                margin: 5px;
+            }
+
+            .action-buttons[disabled] {
+                color: black;
+                background-color: lightgrey;
+            }
+
+            #card-wrapper {
+                margin: 10% 0px;
+            }
+
+            paper-item{
+                --paper-item-disabled-color: black;     
+            }
+
+            #card-wrapper > div {
+                width: 30%;
+            }
+
+            paper-card {
+                background-color: white;
+                width: 100%;
+                --paper-card-header-color: white;
+                --paper-card-header:{
+                background-color: var(--primary-color);
+                }
+            }
+        </style>
+
+        <paper-header-panel id="grapevine-header-panel" class="fit" mode="standard">
+            <paper-toolbar>
+                <a href="../../">
+                    <img class="filemanagerlogoimage" src="../../Images/Origination/Filemanager-logo.svg" /> <!--"[[mainGuruLogo]]"-->
+                </a>
+                <div class="toolbar-container">
+                    <div class="fit layout vertical">
+                        <img id="filemanagerheaderimage" src="../../Images/Origination/Filemanager-header.svg" />
+                    </div>
+                </div>
+                <guru-feedback-button id="topicPageFeedbackButton" guru-site="[[guruSite]]"></guru-feedback-button>
+            </paper-toolbar>
+
+            <div id="card-wrapper" class="layout horizontal around-justified">
+                <div>
+                    <paper-card heading="Select your file">
+                        <div class="card-content layout vertical">
+                            <template is="dom-repeat" items="{{dropMenus}}">
+                                <div class="vertical layout">
+                                    <paper-dropdown-menu id="dropdown[[index]]" label="Select File/Folder" on-iron-select="_dropdownMenu">
+                                        <paper-listbox id="thelistbox[[index]]" class="dropdown-content" selected="-1">
+                                            <template is="dom-repeat" items="{{item}}">
+                                                <paper-item id="paperitem[[index]]">{{item}}</paper-item>
+                                            </template>
+                                        </paper-listbox>
+                                    </paper-dropdown-menu>
+                                </div>
+                            </template>
+                        </div>
+                        <div class="card-actions horizontal layout end-justified">
+                            <paper-button disabled$="{{hiddenReset}}" class="action-buttons" on-click="_reset">Reset</paper-button>
+                            <paper-button disabled$="{{hiddenAdd}}" class="action-buttons" on-click="_itemAdded">Add</paper-button>
+                        </div>
+                    </paper-card>
+                </div>
+                <div>
+                    <paper-card heading="Confirm these files are to be deleted ">
+                        <div id="submit-box">
+                                <template is="dom-repeat" items="{{fileList}}">
+                                    <div id="file-container" class="horizontal layout">
+                                            <paper-item id ="output-paper-item">{{item}}</paper-item>
+                                            <paper-icon-button icon="icons:close" on-click="_deleteEntry"></paper-icon-button>
+                                    </div>
+                                </template>
+                        </div>
+                        <div class="card-actions horizontal layout end-justified">
+                            <paper-button disabled$="{{hiddenSubmit}}" class="action-buttons" on-tap="_onSubmit">Submit</paper-button>
+                        </div>
+                </div>
+                <paper-toast id="file-toast" text="File(s) Deleted"></paper-toast>
+            </div>
+        </paper-header-panel>
+
+        <iron-ajax auto
+                   id="getfilesajax"
+                   method="GET"
+                   url="../../api/manager/getfiles"
+                   on-response="_onLoad"
+                   on-error="_fileerror">
+        </iron-ajax>
+        <iron-ajax id="submitajax"
+                   method="POST"
+                   body={{fileList}}
+                   content-type="application/json"
+                   url="../../api/manager/submit"
+                   on-error="_fileerror"
+                   on-response="_afterSubmit">
+        </iron-ajax>
+    </template>
+
+    <script src="../../dist/file-manager/file-manager.js"></script>
+</dom-module>
