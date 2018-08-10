@@ -76,7 +76,7 @@ namespace GURU.api
                 {
                     const int LOGON32_PROVIDER_DEFAULT = 0;
                     const int LOGON32_LOGON_INTERACTIVE = 2;
-                    bool returnValue = LogonUser("GuruFileManager", "MI", "$)V2CxKrxLjC",
+                    bool returnValue = LogonUser("GuruFileManager", "MI", "",
                         LOGON32_LOGON_INTERACTIVE, LOGON32_PROVIDER_DEFAULT,
                         out safeTokenHandle);
 
@@ -105,18 +105,6 @@ namespace GURU.api
                                 Debug.WriteLine(x);
 
                                 string[] theFiles = Directory.GetFiles(@"C:\Users\JMondal");
-
-                                // does deletion stuff
-                                //string path = ConfigurationManager.AppSettings["FilePath"];
-                                //for (int i = 0; i < x.Count; i++)
-                                //{
-                                //    string FullPath = path + x[i];
-                                //    Debug.WriteLine(FullPath);
-
-                                //    //FullPath = (@"C:\Users\JMondal\Desktop\filetodelete.txt");
-                                //    if (File.Exists(FullPath)) { File.Delete(FullPath); }
-                                //    else { throw new System.InvalidOperationException("FilePath is invalid, or FileNotFound"); }
-                                //}
                             }
 
                         }
