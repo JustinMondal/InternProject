@@ -1,61 +1,71 @@
-﻿using System;
-using System.Runtime.InteropServices;
-using System.Text;
+using System;
 using System.IO;
-using System.Net;
-using System.Management;
-using System.Diagnostics;
-using System.Data.SqlClient;
-using GURU.Controllers;
-using Dapper;
-using System.Web.Http;
-using System.ComponentModel;
-using System.Web;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Configuration;
 using System.Linq;
-using System.Collections.Generic;
+using System.Web.Http;
 using System.Security;
-using System.Security.Permissions;
-using System.Data;
+using System.Configuration;
 using Rock.Framework.Logging;
 using System.Security.Principal;
+using System.Collections.Generic;
 using Microsoft.Win32.SafeHandles;
+using System.Runtime.InteropServices;
 using System.Runtime.ConstrainedExecution;
 
 namespace GURU.api
 {
     [RoutePrefix("api/manager")]
-
     public class FileManagerController : BaseApiController
     {
-        static string path = ConfigurationManager.AppSettings["FilePath"];
+        private static string _path;
+        private static string _gfmusername;
+        private static string _gfmpassword;
 
-        public ILogger logger = LoggerFactory.GetInstance();
+        public ILogger Logger = LoggerFactory.GetInstance();
+
+        public FileManagerController()
+        {
+            var path = ConfigurationManager.AppSettings["GuruResourcesBasePath"] + "Guru_Resources/";
+            switch (Rock.Framework.Environment.ApplicationId)
+            {
+                case 201217:
+                    path += "Servicing";
+                    break;
+                default:
+                    path += "Origination";
+                    break;
+            }
+            _path = new Uri(path).LocalPath;
+            _gfmusername = ConfigurationManager.AppSettings["GuruFileManagerUsername"];
+            _gfmpassword = ConfigurationManager.AppSettings["GuruFileManagerPassword"];
+        }
+
+
         [Route("getfiles"), HttpGet]
         public IHttpActionResult GetFiles()
         {
-            List<string> Folders = new List<string>();
-            string[] dirs = System.IO.Directory.GetFiles(path);
-            dirs = System.IO.Directory.GetFiles(path, "*.*", SearchOption.AllDirectories);
-            return Ok(dirs);
+            try
+            {
+                var dirs = Directory.GetFiles(_path, "*.*", SearchOption.AllDirectories);
+                return Ok(dirs.Select(x => x.Remove(0, _path.Length + 1)).ToArray());
+            }
+            catch (Exception)
+            {
+                return NotFound();
+            }
         }
 
         [Route("submit"), HttpPost]
 
-        public IHttpActionResult submittedAction(List<String> x)
+        public IHttpActionResult SubmittedAction(List<String> x)
         {
-
             ImpersonateUser callUser = new ImpersonateUser();
-
             try
             {
-                callUser.Main(x);
-            }           
+                callUser.DeleteFiles(x);
+            }
             catch (Exception e)
             {
-                logger.Error(e.Message);
+                Logger.Error(e.Message);
                 return InternalServerError(e);
             }
             return Ok(x);
@@ -68,70 +78,53 @@ namespace GURU.api
             int dwLogonType, int dwLogonProvider, out SafeTokenHandle phToken);
 
             [DllImport("kernel32.dll", CharSet = CharSet.Auto)]
-            public extern static bool CloseHandle(IntPtr handle);
-            public void Main(List<String> x)
+            public static extern bool CloseHandle(IntPtr handle);
+
+            public void DeleteFiles(List<String> x)
             {
                 SafeTokenHandle safeTokenHandle;
-                try
+                const int logon32ProviderDefault = 0;
+                const int logon32LogonInteractive = 2;
+                bool returnValue = ImpersonateUser.LogonUser(_gfmusername, "MI", _gfmpassword,
+                    logon32LogonInteractive, logon32ProviderDefault,
+                    out safeTokenHandle);
+
+                if (false == returnValue)
                 {
-                    const int LOGON32_PROVIDER_DEFAULT = 0;
-                    const int LOGON32_LOGON_INTERACTIVE = 2;
-                    bool returnValue = LogonUser("GuruFileManager", "MI", "",
-                        LOGON32_LOGON_INTERACTIVE, LOGON32_PROVIDER_DEFAULT,
-                        out safeTokenHandle);
-
-                    Debug.WriteLine("LogonUser called.");
-
-                    if (false == returnValue)
+                    int ret = Marshal.GetLastWin32Error();
+                    throw new System.ComponentModel.Win32Exception(ret);
+                }
+                using (safeTokenHandle)
+                {
+                    using (WindowsIdentity newId = new WindowsIdentity(safeTokenHandle.DangerousGetHandle()))
                     {
-                        int ret = Marshal.GetLastWin32Error();
-                        Debug.WriteLine("LogonUser failed with error code : {0}", ret);
-                        throw new System.ComponentModel.Win32Exception(ret);
-                    }
-                    using (safeTokenHandle)
-                    {
-                        Debug.WriteLine("Did LogonUser Succeed? " + (returnValue ? "Yes" : "No"));
-                        Debug.WriteLine("Value of Windows NT token: " + safeTokenHandle);
-
-                        Debug.WriteLine("Before impersonation: "
-                            + WindowsIdentity.GetCurrent().Name);
-                        using (WindowsIdentity newId = new WindowsIdentity(safeTokenHandle.DangerousGetHandle()))
+                        using (WindowsImpersonationContext impersonatedUser = newId.Impersonate())
                         {
-                            using (WindowsImpersonationContext impersonatedUser = newId.Impersonate())
+                            foreach (var item in x)
                             {
-                                Debug.WriteLine("After impersonation: "
-                                    + WindowsIdentity.GetCurrent().Name);
-
-                                Debug.WriteLine(x);
-
-                                string[] theFiles = Directory.GetFiles(@"C:\Users\JMondal");
+                                if (File.Exists(Path.Combine(_path, item))) { File.Delete(Path.Combine(_path, item)); }
+                                else { throw new FileNotFoundException("The file was not found"); }
                             }
-
                         }
-                        Debug.WriteLine("After closing the context: " + WindowsIdentity.GetCurrent().Name);
                     }
-                } 
-                catch (Exception ex)
-                {
-                    Debug.WriteLine("Exception occurred. " + ex.Message);
                 }
             }
+        }
 
-            public sealed class SafeTokenHandle : SafeHandleZeroOrMinusOneIsInvalid
+        public sealed class SafeTokenHandle : SafeHandleZeroOrMinusOneIsInvalid
+        {
+            private SafeTokenHandle()
+                : base(true)
             {
-                private SafeTokenHandle()
-                    : base(true)
-                {
-                }
-                [DllImport("kernel32.dll")]
-                [ReliabilityContract(Consistency.WillNotCorruptState, Cer.Success)]
-                [SuppressUnmanagedCodeSecurity]
-                [return: MarshalAs(UnmanagedType.Bool)]
-                private static extern bool CloseHandle(IntPtr handle);
-                protected override bool ReleaseHandle()
-                {
-                    return CloseHandle(handle);
-                }
+            }
+            [DllImport("kernel32.dll")]
+            [ReliabilityContract(Consistency.WillNotCorruptState, Cer.Success)]
+            [SuppressUnmanagedCodeSecurity]
+            [return: MarshalAs(UnmanagedType.Bool)]
+            private static extern bool CloseHandle(IntPtr handle);
+            protected override bool ReleaseHandle()
+            {
+                return CloseHandle(handle);
             }
         }
     }
