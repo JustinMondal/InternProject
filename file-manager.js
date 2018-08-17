@@ -48,6 +48,7 @@ class FileManager {
     }
 
     itemclicked(e) {
+        this.hiddenSubmit = false;
         let input = e.currentTarget.parentElement.innerText.trim();
         let index = this.files.indexOf(input);
         this.push('fileList', this.files.splice(index, 1)[0]);
@@ -64,7 +65,10 @@ class FileManager {
         this.filteredFiles = this.files;
         this.fileList = [];
         this.$['input-box'].value = "";
+        this.hiddenReset = !this.hiddenReset;
+        this.hiddenSubmit = !this.hiddenSubmit;
         this._filterFiles("");
+
     }
 
     _deleteEntry(e) {
@@ -73,6 +77,7 @@ class FileManager {
         this.splice('fileList', this.fileList.indexOf(input), 1);
         if (!this.fileList.length) {
             this.hiddenReset = !this.hiddenReset;
+            this.hiddenSubmit = !this.hiddenSubmit;
         }
 
         this._filterFiles(this.$["input-box"].value);
@@ -83,7 +88,8 @@ class FileManager {
     }
 
     _afterSubmit(e) {
-        this.fileList = [];
+        this.hiddenSubmit = !this.hiddenSubmit;
+        this.fileList =[];
         this.$['file-toast'].text = "File(s) Deleted";
         this.$['file-toast'].open();
     }
